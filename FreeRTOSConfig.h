@@ -1,5 +1,5 @@
 /*
- * FreeRTOS V202112.00
+ * FreeRTOS V202012.00
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,6 +29,14 @@
 #define FREERTOS_CONFIG_H
 
 #include <lpc21xx.h>
+#include "GPIO.h"
+
+/**/
+extern int task1_IN, task1_OUT, task1_Time;
+extern int task2_IN, task2_OUT, task2_Time;
+extern int task3_IN, task3_OUT, task3_Time;
+extern int sys_time;
+extern int cpu_load;
 
 /*-----------------------------------------------------------
  * Application specific definitions.
@@ -42,7 +50,7 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
-#define configUSE_PREEMPTION		0
+#define configUSE_PREEMPTION		1
 #define configUSE_IDLE_HOOK			0
 #define configUSE_TICK_HOOK			0
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 60000000 )	/* =12.0MHz xtal multiplied by 5 using the PLL. */
@@ -51,9 +59,14 @@
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 90 )
 #define configTOTAL_HEAP_SIZE		( ( size_t ) 13 * 1024 )
 #define configMAX_TASK_NAME_LEN		( 8 )
-#define configUSE_TRACE_FACILITY	0
+#define configUSE_TRACE_FACILITY	1
 #define configUSE_16_BIT_TICKS		0
 #define configIDLE_SHOULD_YIELD		1
+
+#define configUSE_MUTEXES 				1
+#define configUSE_APPLICATION_TASK_TAG 	1
+
+#define configRUN_TIME_COUNTER_TYPE uint32_t
 
 #define configQUEUE_REGISTRY_SIZE 	0
 
@@ -71,6 +84,60 @@ to exclude the API function. */
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
+
+
+#define configUSE_EDF_SCHEDULER 		1
+
+/*Trace Hooks*/
+
+#define traceTASK_SWITCHED_OUT() do\
+								{\
+									if((int)pxCurrentTCB->pxTaskTag == 1)\
+									{\
+										GPIO_write(PORT_0,PIN1,PIN_IS_LOW) ;\
+										task1_OUT = T1TC;\
+										task1_Time += (task1_OUT - task1_IN);\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 2)\
+									{\
+										GPIO_write(PORT_0,PIN2,PIN_IS_LOW) ;\
+										task2_OUT = T1TC;\
+										task2_Time += (task2_OUT - task2_IN);\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 3)\
+									{\
+										GPIO_write(PORT_0,PIN3,PIN_IS_LOW) ;\
+										task3_OUT = T1TC;\
+										task3_Time += (task3_OUT - task3_IN);\
+									}\
+									sys_time=T1TC;\
+									cpu_load= ( (task1_Time + task2_Time + task3_Time) / (float) sys_time )*100;\
+								}while(0)
+
+#define traceTASK_SWITCHED_IN() do\
+								{\
+									if((int)pxCurrentTCB->pxTaskTag == 1)\
+									{\
+										GPIO_write(PORT_0,PIN1,PIN_IS_HIGH) ;\
+										task1_IN = T1TC ;\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 2)\
+									{\
+										GPIO_write(PORT_0,PIN2,PIN_IS_HIGH) ;\
+										task2_IN = T1TC ;\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 3)\
+									{\
+										GPIO_write(PORT_0,PIN3,PIN_IS_HIGH) ;\
+										task3_IN = T1TC ;\
+									}\
+								}while(0)
+
+/*Configure Run-Time Stats*/
+#define configUSE_STATS_FORMATTING_FUNCTIONS 1
+#define configGENERATE_RUN_TIME_STATS 1
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()
+#define portGET_RUN_TIME_COUNTER_VALUE() (T1TC)
 
 
 

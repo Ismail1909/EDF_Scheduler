@@ -55,11 +55,15 @@
 /* Standard includes. */
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "lpc21xx.h"
+#include "semphr.h"
+#include "event_groups.h"
+#include "queue.h"
 
 /* Peripheral includes. */
 #include "serial.h"
@@ -73,11 +77,19 @@
 
 /* Constants for the ComTest demo application tasks. */
 #define mainCOM_TEST_BAUD_RATE	( ( unsigned long ) 115200 )
-	
-TaskHandle_t buttonTaskHandle = NULL;
 
-TaskHandle_t ledTaskHandle = NULL;
+/*Task Handlers*/
+TaskHandle_t Task1Handler = NULL;
+TaskHandle_t Task2Handler = NULL;
+TaskHandle_t Task3Handler = NULL;
 
+int task1_IN = 0, task1_OUT = 0, task1_Time;
+int task2_IN = 0, task2_OUT = 0, task2_Time;
+int task3_IN = 0, task3_OUT = 0, task3_Time;
+int sys_time = 0;
+int cpu_load = 0;
+
+char runTimeStatsBuf[200];
 
 /*
  * Configure the processor for use with the Keil demo board.  This is very
@@ -87,45 +99,69 @@ TaskHandle_t ledTaskHandle = NULL;
 static void prvSetupHardware( void );
 /*-----------------------------------------------------------*/
 
-pinState_t buttonState;
 
-void Button_Task(void * pvParameters)
+
+/* Task to be created. */
+void Task_1( void * pvParameters )
 {
 	int i=0;
-	TickType_t xLastWakeTime;
- const TickType_t xFrequency = 10;
-
-     // Initialise the xLastWakeTime variable with the current time.
-     xLastWakeTime = xTaskGetTickCount();
-
-	for(;;)
-	{
-		for(i=0;i<1000;i++)
+	int xLastWakeTime = xTaskGetTickCount();
+	
+	vTaskSetApplicationTaskTag(NULL,(void *) 1);
+    for( ;; )
+    {
+		/* Task code goes here. */
+		for(i=0;i<401220;i++)
 		{
-			i=i;
+			/*Simulate heavy load*/
 		}
 		
-		vTaskDelayUntil(&xLastWakeTime,500);
-	}
+		vTaskDelayUntil( &xLastWakeTime, 100 );
+		}
 }
 
-void LED_Task(void * pvParameters)
+/* Task to be created. */
+void Task_2( void * pvParameters )
 {
-	for(;;)
-	{
-		if(buttonState)
+	int i=0;
+
+	int xLastWakeTime = xTaskGetTickCount();
+
+	vTaskSetApplicationTaskTag(NULL,(void *) 2);
+    for( ;; )
+    {
+		
+		/* Task code goes here. */
+		for(i=0;i<74500;i++)
 		{
-			GPIO_write(PORT_0,PIN1,PIN_IS_HIGH);
-		}
-		else
-		{
-			GPIO_write(PORT_0,PIN1,PIN_IS_LOW);
+			/*Simulate heavy load*/
 		}
 		
-		vTaskDelay(200);
-	}
-		
+		vTaskDelayUntil(&xLastWakeTime, 50);
+		}
 }
+
+/* Task to be created. */
+void Task_3( void * pvParameters )
+{
+	int i=0;
+	
+	int xLastWakeTime = xTaskGetTickCount();
+
+	vTaskSetApplicationTaskTag(NULL,(void *) 3);
+    for( ;; )
+    {
+		
+		/* Task code goes here. */
+		for(i=0;i<10000;i++)
+		{
+			/*Simulate heavy load*/
+		}
+		
+		vTaskDelayUntil( &xLastWakeTime, 30 );
+		}
+}
+
 
 
 /*
@@ -139,23 +175,32 @@ int main( void )
 
 	
     /* Create Tasks here */
-	xTaskCreate(
-                    Button_Task,     /* Function that implements the task. */
-                    "Button Task",   /* Text name for the task. */
-                    100,             /* Stack size in words, not bytes. */
-                    ( void * ) 0,    /* Parameter passed into the task. */
-                    1,               /* Priority at which the task is created. */
-                    &buttonTaskHandle );      /* Used to pass out the created task's handle. */
-										
-	xTaskCreate(
-                    LED_Task,     /* Function that implements the task. */
-                    "LED Task",   /* Text name for the task. */
-                    100,             /* Stack size in words, not bytes. */
-                    ( void * ) 0,    /* Parameter passed into the task. */
-                    1,               /* Priority at which the task is created. */
-                    &ledTaskHandle );      /* Used to pass out the created task's handle. */									
-
-
+	
+	/* Create the task, storing the handle. */
+    xTaskPeriodicCreate(
+						Task_1,      		/* Function that implements the task. */
+						"Task 1",        /* Text name for the task. */
+						100,      						/* Stack size in words, not bytes. */
+						( void * ) 0,    			/* Parameter passed into the task. */
+						1,										/* Priority at which the task is created. */
+						&Task1Handler,
+						100); 			/* Used to pass out the created task's handle. */
+    xTaskPeriodicCreate(
+						Task_2,      		/* Function that implements the task. */
+						"Task 2",        /* Text name for the task. */
+						100,      						/* Stack size in words, not bytes. */
+						( void * ) 0,    			/* Parameter passed into the task. */
+						2,										/* Priority at which the task is created. */
+						&Task2Handler,
+						50); 			/* Used to pass out the created task's handle. */
+	xTaskPeriodicCreate(
+						Task_3,      		/* Function that implements the task. */
+						"Task 3",        /* Text name for the task. */
+						100,      						/* Stack size in words, not bytes. */
+						( void * ) 0,    			/* Parameter passed into the task. */
+						3,										/* Priority at which the task is created. */
+						&Task3Handler,				/* Used to pass out the created task's handle. */
+						30);
 
 	/* Now all the tasks have been started - start the scheduler.
 
@@ -172,14 +217,11 @@ int main( void )
 }
 /*-----------------------------------------------------------*/
 
-/* Function to reset timer 1 */
 void timer1Reset(void)
 {
 	T1TCR |= 0x2;
 	T1TCR &= ~0x2;
 }
-
-/* Function to initialize and start timer 1 */
 static void configTimer1(void)
 {
 	T1PR = 1000;
@@ -192,16 +234,16 @@ static void prvSetupHardware( void )
 	setup is managed by the settings in the project file. */
 
 	/* Configure UART */
-	xSerialPortInitMinimal(mainCOM_TEST_BAUD_RATE);
+	//xSerialPortInitMinimal(mainCOM_TEST_BAUD_RATE);
 
 	/* Configure GPIO */
 	GPIO_init();
 	
-	/* Config trace timer 1 and read T1TC to get current tick */
+	/* Configure Trace timer 1 and read T1TC to get current tick*/
 	configTimer1();
 
 	/* Setup the peripheral bus to be the same as the PLL output. */
-	VPBDIV = mainBUS_CLK_FULL;
+	//VPBDIV = mainBUS_CLK_FULL;
 }
 /*-----------------------------------------------------------*/
 
