@@ -35,6 +35,9 @@
 extern int task1_IN, task1_OUT, task1_Time;
 extern int task2_IN, task2_OUT, task2_Time;
 extern int task3_IN, task3_OUT, task3_Time;
+extern int task4_IN, task4_OUT, task4_Time;
+extern int task5_IN, task5_OUT, task5_Time;
+extern int task6_IN, task6_OUT , task6_Time;
 extern int sys_time;
 extern int cpu_load;
 
@@ -110,8 +113,30 @@ to exclude the API function. */
 										task3_OUT = T1TC;\
 										task3_Time += (task3_OUT - task3_IN);\
 									}\
+									if((int)pxCurrentTCB->pxTaskTag == 4)\
+									{\
+										GPIO_write(PORT_0,PIN4,PIN_IS_LOW) ;\
+										task4_OUT = T1TC;\
+										task4_Time += (task4_OUT - task4_IN);\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 5)\
+									{\
+										GPIO_write(PORT_0,PIN5,PIN_IS_LOW) ;\
+										task5_OUT = T1TC;\
+										task5_Time += (task5_OUT - task5_IN);\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 6)\
+									{\
+										GPIO_write(PORT_0,PIN6,PIN_IS_LOW) ;\
+										task6_OUT = T1TC;\
+										task6_Time += (task6_OUT - task6_IN);\
+									}\
+									else \
+									{\
+										GPIO_write(PORT_0,PIN7 ,PIN_IS_LOW) ;\
+									}\
 									sys_time=T1TC;\
-									cpu_load= ( (task1_Time + task2_Time + task3_Time) / (float) sys_time )*100;\
+									cpu_load= ( (task1_Time +task2_Time+task3_Time+task4_Time+task5_Time+task6_Time) / (float) sys_time )*100;\
 								}while(0)
 
 #define traceTASK_SWITCHED_IN() do\
@@ -130,6 +155,25 @@ to exclude the API function. */
 									{\
 										GPIO_write(PORT_0,PIN3,PIN_IS_HIGH) ;\
 										task3_IN = T1TC ;\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 4)\
+									{\
+										GPIO_write(PORT_0,PIN4,PIN_IS_HIGH) ;\
+										task4_IN = T1TC ;\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 5)\
+									{\
+										GPIO_write(PORT_0,PIN5,PIN_IS_HIGH) ;\
+										task5_IN = T1TC ;\
+									}\
+									else if((int)pxCurrentTCB->pxTaskTag == 6)\
+									{\
+										GPIO_write(PORT_0,PIN6,PIN_IS_HIGH) ;\
+										task6_IN = T1TC ;\
+									}\
+									else \
+									{\
+										GPIO_write(PORT_0,PIN7 ,PIN_IS_HIGH) ;\
 									}\
 								}while(0)
 
